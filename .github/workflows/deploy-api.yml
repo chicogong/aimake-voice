@@ -33,6 +33,15 @@ jobs:
       - name: Test
         run: cd api && npx vitest run
 
+      # Apply D1 migrations before deploying so the schema is in place for the
+      # new code. Runs non-interactively in CI; a failure here stops the job
+      # before Deploy, so code is never shipped against an un-migrated schema.
+      - name: Apply D1 migrations
+        run: cd api && npx wrangler d1 migrations apply aimake-db --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy
         run: cd api && npx wrangler deploy
         env:
