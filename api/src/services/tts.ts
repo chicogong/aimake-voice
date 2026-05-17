@@ -10,6 +10,7 @@ import { users, usageLogs } from '../db';
 import { eq, sql } from 'drizzle-orm';
 import { generateId } from '../utils/id';
 import { errors } from '../middleware/error';
+import { estimateApiCost } from '../utils/pricing';
 
 const SILICONFLOW_CONFIG = {
   baseUrl: 'https://api.siliconflow.cn/v1/audio/speech',
@@ -36,7 +37,6 @@ export class TTSService {
       text: string;
       voiceId: string;
       speed?: number;
-      pitch?: number;
       format?: 'mp3' | 'wav';
     }
   ): Promise<ArrayBuffer> {
@@ -72,6 +72,7 @@ export class TTSService {
       type: 'tts',
       charsUsed: text.length,
       durationUsed: estimatedDuration,
+      apiCost: estimateApiCost(estimatedDuration),
       provider: 'siliconflow',
       createdAt: now,
     });

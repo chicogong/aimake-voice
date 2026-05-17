@@ -5,11 +5,12 @@
  */
 
 import { Hono } from 'hono';
-import { eq, and, gte, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import type { Env, Variables } from '../types';
 import { createDb, usageLogs } from '../db';
 import { success } from '../utils/response';
 import { getNextMonthReset } from '../utils/date';
+import { estimateApiCost, TTS_USD_PER_AUDIO_MINUTE } from '../utils/pricing';
 
 const user = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -62,6 +63,7 @@ user.get('/usage', async (c) => {
   const page = parseInt(c.req.query('page') || '1', 10);
   const pageSize = Math.min(parseInt(c.req.query('pageSize') || '20', 10), 100);
   const startDate = c.req.query('startDate');
+  const endDate = c.req.query('endDate');
   const type = c.req.query('type');
 
   const db = createDb(c.env.DB);
@@ -71,6 +73,10 @@ user.get('/usage', async (c) => {
 
   if (startDate) {
     conditions.push(gte(usageLogs.createdAt, startDate));
+  }
+
+  if (endDate) {
+    conditions.push(lte(usageLogs.createdAt, endDate));
   }
 
   if (type) {
@@ -98,6 +104,7 @@ user.get('/usage', async (c) => {
     .select({
       totalChars: sql<number>`COALESCE(SUM(${usageLogs.charsUsed}), 0)`,
       totalDuration: sql<number>`COALESCE(SUM(${usageLogs.durationUsed}), 0)`,
+      totalCost: sql<number>`COALESCE(SUM(COALESCE(${usageLogs.apiCost}, ${usageLogs.durationUsed} / 60.0 * ${TTS_USD_PER_AUDIO_MINUTE})), 0)`,
     })
     .from(usageLogs)
     .where(and(...conditions));
@@ -111,14 +118,14 @@ user.get('/usage', async (c) => {
         jobId: r.jobId,
         characters: r.charsUsed,
         duration: r.durationUsed,
-        cost: r.durationUsed,
+        cost: r.apiCost ?? estimateApiCost(r.durationUsed),
         provider: r.provider,
         createdAt: r.createdAt,
       })),
       summary: {
         totalCharacters: summary?.totalChars || 0,
         totalDuration: Math.round(summary?.totalDuration || 0),
-        totalCost: Math.round(summary?.totalDuration || 0),
+        totalCost: Math.round((summary?.totalCost || 0) * 1e6) / 1e6,
       },
     },
     {

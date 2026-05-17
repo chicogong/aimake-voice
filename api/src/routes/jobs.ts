@@ -11,16 +11,16 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { eq, and, desc, sql, ne } from 'drizzle-orm';
-import { z } from 'zod';
 import type { Env, Variables, JobResponse, ContentType } from '../types';
 import { createDb, jobs, type Database } from '../db';
 import { generateId, generateShortId } from '../utils/id';
 import { success, created } from '../utils/response';
 import { errors } from '../middleware/error';
+import { CreateJobSchema, UpdateScriptSchema } from '../schemas';
 
 interface AgentDispatchPayload {
   jobId: string;
-  source: { type: 'text' | 'url' | 'document'; content: string; documentId?: string };
+  source: { type: 'text' | 'url'; content: string };
   contentType: 'auto' | 'podcast' | 'audiobook' | 'voiceover' | 'education' | 'tts';
   settings: Record<string, unknown>;
   title?: string | null;
@@ -74,31 +74,6 @@ async function dispatchToAgent(
     await markFailed(err instanceof Error ? err.message : 'Agent dispatch failed');
   }
 }
-
-// ============ Zod Schemas ============
-
-const CreateJobSchema = z.object({
-  source: z.object({
-    type: z.enum(['text', 'url', 'document']),
-    content: z.string().min(1, 'source.content 不能为空').max(100000, '内容不能超过 10 万字符'),
-    documentId: z.string().optional(),
-  }),
-  contentType: z.enum(['auto', 'podcast', 'audiobook', 'voiceover', 'education', 'tts']),
-  settings: z.object({
-    duration: z.number().int().min(1).max(60),
-    language: z.enum(['zh', 'en']).optional(),
-    style: z.string().max(100).optional(),
-    voices: z
-      .array(
-        z.object({
-          role: z.string().min(1).max(50),
-          voiceId: z.string().min(1).max(100),
-        })
-      )
-      .min(1, '请至少选择一个音色'),
-  }),
-  title: z.string().max(200).optional(),
-});
 
 const jobsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -342,11 +317,12 @@ jobsStreamRouter.get('/:id/stream', async (c) => {
 jobsRouter.put('/:id/script', async (c) => {
   const user = c.get('user');
   const { id } = c.req.param();
-  const { script } = await c.req.json<{ script: string }>();
 
-  if (!script) {
-    throw errors.validation('script 不能为空');
+  const parsed = UpdateScriptSchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    throw errors.validation(parsed.error.errors[0]?.message || 'script 无效');
   }
+  const { script } = parsed.data;
 
   const db = createDb(c.env.DB);
   const [job] = await db
@@ -406,7 +382,7 @@ jobsRouter.post('/:id/synthesize', async (c) => {
   const dispatch = dispatchToAgent(db, c.env, {
     jobId: job.id,
     source: {
-      type: job.sourceType as 'text' | 'url' | 'document',
+      type: job.sourceType,
       content: job.sourceContent,
     },
     contentType: job.contentType as AgentDispatchPayload['contentType'],
@@ -516,7 +492,7 @@ function jobToResponse(job: typeof jobs.$inferSelect): JobResponse {
     id: job.id,
     title: job.title,
     contentType: job.contentType as ContentType,
-    sourceType: job.sourceType as 'text' | 'url' | 'document',
+    sourceType: job.sourceType,
     status: job.status as JobResponse['status'],
     progress: job.progress ?? 0,
     currentStage: job.currentStage,

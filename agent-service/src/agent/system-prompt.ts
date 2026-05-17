@@ -125,7 +125,7 @@ If ANY step fails:
  */
 export function buildUserPrompt(params: {
   jobId: string;
-  source: { type: 'text' | 'url' | 'document'; content: string };
+  source: { type: 'text' | 'url'; content: string };
   contentType: string;
   settings: {
     episodeDuration: number;

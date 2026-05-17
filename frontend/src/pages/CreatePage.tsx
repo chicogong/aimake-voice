@@ -12,6 +12,7 @@ import { jobsApi } from '@/services/api';
 import type { ContentType, SourceType, CreateJobRequest, Voice } from '@/types';
 import { useToast } from '@/hooks/useToast';
 import { VoiceSelector } from '@/components/tts/VoiceSelector';
+import { MAX_TEXT_LENGTH, validateCreateJobInput } from '@/lib/validation';
 
 const CONTENT_TYPES = [
   { id: 'auto' as const, label: '自动检测', icon: Sparkles, description: 'AI 自动判断最佳类型' },
@@ -40,7 +41,9 @@ export function CreatePage() {
   const [contentType, setContentType] = useState<'auto' | ContentType>('auto');
   const [duration, setDuration] = useState(5);
   const [title, setTitle] = useState('');
-  const [selectedVoices, setSelectedVoices] = useState<Array<{ role: string; voiceId: string }>>([]);
+  const [selectedVoices, setSelectedVoices] = useState<Array<{ role: string; voiceId: string }>>(
+    []
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleVoiceSelect = (voice: Voice, role: string) => {
@@ -55,30 +58,14 @@ export function CreatePage() {
     });
   };
 
-  const MAX_TEXT_LENGTH = 100000;
-
   const handleSubmit = async () => {
-    if (!sourceContent.trim()) {
-      toast({ title: '请输入内容', variant: 'destructive' });
-      return;
-    }
-
-    if (sourceType === 'url') {
-      try {
-        new URL(sourceContent.trim());
-      } catch {
-        toast({ title: '请输入有效的 URL', variant: 'destructive' });
-        return;
-      }
-    }
-
-    if (sourceType === 'text' && sourceContent.length > MAX_TEXT_LENGTH) {
-      toast({ title: `文本不能超过 ${MAX_TEXT_LENGTH.toLocaleString()} 字`, variant: 'destructive' });
-      return;
-    }
-
-    if (selectedVoices.length === 0) {
-      toast({ title: '请选择音色', variant: 'destructive' });
+    const validation = validateCreateJobInput({
+      sourceType,
+      sourceContent,
+      voiceCount: selectedVoices.length,
+    });
+    if (!validation.ok) {
+      toast({ title: validation.message, variant: 'destructive' });
       return;
     }
 
@@ -99,7 +86,9 @@ export function CreatePage() {
         title: title || undefined,
       };
 
-      const response = await jobsApi.create(request) as unknown as { data: { id: string; streamToken: string } };
+      const response = (await jobsApi.create(request)) as unknown as {
+        data: { id: string; streamToken: string };
+      };
       const { id, streamToken } = response.data;
 
       navigate(`/jobs/${id}?token=${streamToken}`);
@@ -123,16 +112,16 @@ export function CreatePage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
             创建声音内容
           </h1>
-          <p className="text-muted-foreground">
-            输入文本或 URL，AI 自动生成播客、有声书、配音等
-          </p>
+          <p className="text-muted-foreground">输入文本或 URL，AI 自动生成播客、有声书、配音等</p>
         </div>
 
         <SignedOut>
           <div className="text-center py-12 space-y-4">
             <p className="text-muted-foreground">请先登录以使用创建功能</p>
             <SignInButton mode="modal">
-              <Button variant="gradient" size="lg">登录开始</Button>
+              <Button variant="gradient" size="lg">
+                登录开始
+              </Button>
             </SignInButton>
           </div>
         </SignedOut>
@@ -141,7 +130,9 @@ export function CreatePage() {
           {/* Step 1: Input */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">1</span>
+              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                1
+              </span>
               输入素材
             </h2>
 
@@ -181,7 +172,9 @@ export function CreatePage() {
                   className="w-full h-48 p-4 pb-8 border rounded-xl bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
                   maxLength={MAX_TEXT_LENGTH}
                 />
-                <span className={`absolute bottom-2 right-3 text-xs ${sourceContent.length > MAX_TEXT_LENGTH * 0.9 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                <span
+                  className={`absolute bottom-2 right-3 text-xs ${sourceContent.length > MAX_TEXT_LENGTH * 0.9 ? 'text-destructive' : 'text-muted-foreground'}`}
+                >
                   {sourceContent.length.toLocaleString()} / {MAX_TEXT_LENGTH.toLocaleString()}
                 </span>
               </div>
@@ -208,7 +201,9 @@ export function CreatePage() {
           {/* Step 2: Content Type */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">2</span>
+              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                2
+              </span>
               选择类型
             </h2>
 
@@ -218,16 +213,23 @@ export function CreatePage() {
                 return (
                   <button
                     key={type.id}
-                    onClick={() => { setContentType(type.id); setSelectedVoices([]); }}
+                    onClick={() => {
+                      setContentType(type.id);
+                      setSelectedVoices([]);
+                    }}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
                       contentType === type.id
                         ? 'border-primary bg-primary/5 shadow-sm'
                         : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <Icon className={`h-6 w-6 ${contentType === type.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <Icon
+                      className={`h-6 w-6 ${contentType === type.id ? 'text-primary' : 'text-muted-foreground'}`}
+                    />
                     <span className="text-sm font-medium">{type.label}</span>
-                    <span className="text-xs text-muted-foreground text-center">{type.description}</span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      {type.description}
+                    </span>
                   </button>
                 );
               })}
@@ -237,7 +239,9 @@ export function CreatePage() {
           {/* Step 3: Settings */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">3</span>
+              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm flex items-center justify-center">
+                3
+              </span>
               设置参数
             </h2>
 
@@ -267,8 +271,12 @@ export function CreatePage() {
                 {contentType === 'podcast' ? '选择主持人音色' : '选择音色'}
               </label>
               <VoiceSelector
-                onSelect={(voice) => handleVoiceSelect(voice, contentType === 'podcast' ? 'host' : 'narrator')}
-                selectedId={selectedVoices.find((v) => v.role === 'host' || v.role === 'narrator')?.voiceId}
+                onSelect={(voice) =>
+                  handleVoiceSelect(voice, contentType === 'podcast' ? 'host' : 'narrator')
+                }
+                selectedId={
+                  selectedVoices.find((v) => v.role === 'host' || v.role === 'narrator')?.voiceId
+                }
               />
             </div>
 
@@ -279,8 +287,12 @@ export function CreatePage() {
                   {contentType === 'podcast' ? '选择嘉宾音色' : '选择学生音色'}
                 </label>
                 <VoiceSelector
-                  onSelect={(voice) => handleVoiceSelect(voice, contentType === 'podcast' ? 'guest' : 'student')}
-                  selectedId={selectedVoices.find((v) => v.role === 'guest' || v.role === 'student')?.voiceId}
+                  onSelect={(voice) =>
+                    handleVoiceSelect(voice, contentType === 'podcast' ? 'guest' : 'student')
+                  }
+                  selectedId={
+                    selectedVoices.find((v) => v.role === 'guest' || v.role === 'student')?.voiceId
+                  }
                 />
               </div>
             )}

@@ -4,28 +4,24 @@
  */
 
 import { Hono } from 'hono';
-import type { Env, Variables, QuickTTSRequest } from '../types';
+import type { Env, Variables } from '../types';
 import { createDb } from '../db';
 import { TTSService } from '../services/tts';
 import { errors } from '../middleware/error';
 import { ttsRateLimitMiddleware } from '../middleware/rateLimit';
+import { QuickTtsSchema } from '../schemas';
 
 const ttsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // POST /api/tts/quick — Quick TTS (sync, returns audio blob)
 ttsRouter.post('/quick', ttsRateLimitMiddleware, async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<QuickTTSRequest>();
 
-  if (!body.text || body.text.length === 0) {
-    throw errors.validation('文本不能为空');
+  const parsed = QuickTtsSchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    throw errors.validation(parsed.error.errors[0]?.message || '请求参数错误');
   }
-  if (body.text.length > 5000) {
-    throw errors.validation('文本长度不能超过 5000 字符');
-  }
-  if (!body.voiceId) {
-    throw errors.validation('voiceId 不能为空');
-  }
+  const body = parsed.data;
 
   const db = createDb(c.env.DB);
   const ttsService = new TTSService(db, c.env);
@@ -34,7 +30,6 @@ ttsRouter.post('/quick', ttsRateLimitMiddleware, async (c) => {
     text: body.text,
     voiceId: body.voiceId,
     speed: body.speed,
-    pitch: body.pitch,
     format: body.format,
   });
 
