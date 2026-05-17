@@ -17,12 +17,12 @@ export const extractContentTool = tool(
     'For text: returns the text with metadata. ' +
     'Call this to get the source material for content generation.',
   {
-    type: z.enum(['url', 'text', 'document']).describe('Source type'),
+    type: z.enum(['url', 'text']).describe('Source type'),
     content: z.string().describe('The URL to fetch or the raw text content'),
   },
   ({ type, content }) =>
     withErrorHandling(async () => {
-      if (type === 'text' || type === 'document') {
+      if (type === 'text') {
         return toolSuccess({
           title: null,
           text: content,
@@ -48,7 +48,9 @@ export const extractContentTool = tool(
 
         const declaredLength = Number(response.headers.get('content-length') || '0');
         if (declaredLength > MAX_HTML_BYTES) {
-          return toolError(`URL content too large: ${declaredLength} bytes (max ${MAX_HTML_BYTES})`);
+          return toolError(
+            `URL content too large: ${declaredLength} bytes (max ${MAX_HTML_BYTES})`
+          );
         }
 
         const html = await response.text();

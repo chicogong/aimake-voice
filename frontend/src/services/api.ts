@@ -115,7 +115,6 @@ export const ttsApi = {
     text: string;
     voiceId: string;
     speed?: number;
-    pitch?: number;
     format?: 'mp3' | 'wav';
   }): Promise<Blob> => {
     let token: string | null = null;

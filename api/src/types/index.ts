@@ -77,7 +77,7 @@ export interface PaginationParams {
 // ============ Content Types ============
 export type ContentType = 'podcast' | 'audiobook' | 'voiceover' | 'education' | 'tts';
 
-export type SourceType = 'text' | 'url' | 'document';
+export type SourceType = 'text' | 'url';
 
 export type JobStatus =
   | 'pending'
@@ -95,7 +95,6 @@ export interface CreateJobRequest {
   source: {
     type: SourceType;
     content: string;
-    documentId?: string;
   };
   contentType: 'auto' | ContentType;
   settings: {
@@ -142,7 +141,6 @@ export interface QuickTTSRequest {
   text: string;
   voiceId: string;
   speed?: number;
-  pitch?: number;
   format?: 'mp3' | 'wav';
 }
 

@@ -80,7 +80,10 @@ async function verifyWebhookSignature(
   const expectedSig = btoa(String.fromCharCode(...new Uint8Array(sig)));
 
   // Compare against all provided signatures (format: "v1,<base64>")
-  const signatures = svixSignature.split(' ').map((s) => s.split(',')[1]).filter(Boolean);
+  const signatures = svixSignature
+    .split(' ')
+    .map((s) => s.split(',')[1])
+    .filter(Boolean);
   return signatures.some((s) => s === expectedSig);
 }
 
@@ -115,7 +118,7 @@ clerkWebhook.post('/clerk', async (c) => {
     return c.json({ success: false, error: 'Invalid signature' }, 401);
   }
 
-  const body = JSON.parse(rawBody) as {
+  let body: {
     type: string;
     data: {
       id: string;
@@ -125,6 +128,11 @@ clerkWebhook.post('/clerk', async (c) => {
       image_url?: string | null;
     };
   };
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+  }
 
   const db = createDb(c.env.DB);
 

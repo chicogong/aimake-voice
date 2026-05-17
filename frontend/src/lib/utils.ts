@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { GeneratedScript } from '@/types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -31,4 +32,26 @@ export function formatDate(dateStr: string): string {
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + '...';
+}
+
+/**
+ * Parse a script JSON string into a GeneratedScript. Returns null when the
+ * payload is missing, not valid JSON, or structurally not a script — callers
+ * render a fallback instead of crashing on `.segments.map`.
+ */
+export function parseScript(raw: string | null | undefined): GeneratedScript | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      Array.isArray((parsed as { segments?: unknown }).segments)
+    ) {
+      return parsed as GeneratedScript;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

@@ -82,7 +82,7 @@ export const jobs = sqliteTable(
       enum: ['podcast', 'audiobook', 'voiceover', 'education', 'tts'],
     }).notNull(),
     sourceType: text('source_type', {
-      enum: ['text', 'url', 'document'],
+      enum: ['text', 'url'],
     }).notNull(),
     sourceContent: text('source_content').notNull(),
     sourceMimeType: text('source_mime_type'),
@@ -104,7 +104,17 @@ export const jobs = sqliteTable(
 
     // Status tracking
     status: text('status', {
-      enum: ['pending', 'classifying', 'extracting', 'analyzing', 'scripting', 'synthesizing', 'assembling', 'completed', 'failed'],
+      enum: [
+        'pending',
+        'classifying',
+        'extracting',
+        'analyzing',
+        'scripting',
+        'synthesizing',
+        'assembling',
+        'completed',
+        'failed',
+      ],
     })
       .notNull()
       .default('pending'),
@@ -182,7 +192,9 @@ export const usageLogs = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
 
-    type: text('type', { enum: ['tts', 'podcast', 'audiobook', 'voiceover', 'education'] }).notNull(),
+    type: text('type', {
+      enum: ['tts', 'podcast', 'audiobook', 'voiceover', 'education'],
+    }).notNull(),
     charsUsed: integer('chars_used').notNull(),
     durationUsed: real('duration_used').notNull(),
 

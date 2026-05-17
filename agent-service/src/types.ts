@@ -7,9 +7,8 @@ export type ContentType = 'auto' | 'podcast' | 'audiobook' | 'voiceover' | 'educ
 export const GenerateRequestSchema = z.object({
   jobId: z.string(),
   source: z.object({
-    type: z.enum(['text', 'url', 'document']),
+    type: z.enum(['text', 'url']),
     content: z.string(),
-    documentId: z.string().optional(),
   }),
   contentType: z.enum(['auto', 'podcast', 'audiobook', 'voiceover', 'education', 'tts']),
   settings: z.object({
@@ -68,6 +67,7 @@ export interface AssembledAudio {
 
 // ============ Progress ============
 
+/** Pipeline stages the agent executes. */
 export type JobStage =
   | 'classifying'
   | 'extracting'
@@ -78,6 +78,9 @@ export type JobStage =
   | 'completed'
   | 'failed';
 
+/** Full job lifecycle status stored by the API (`pending` precedes the pipeline). */
+export type JobStatus = 'pending' | JobStage;
+
 export interface ProgressUpdate {
   stage: JobStage;
   progress: number;
@@ -87,7 +90,7 @@ export interface ProgressUpdate {
 // ============ Callback Payloads ============
 
 export interface ProgressCallbackPayload {
-  status: JobStage;
+  status: JobStatus;
   progress: number;
   currentStage: string;
   detectedContentType?: string;

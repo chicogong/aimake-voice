@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { jobsApi } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
 import type { GeneratedScript } from '@/types';
+import { parseScript } from '@/lib/utils';
 
 interface ScriptEditorProps {
   jobId: string;
@@ -15,13 +16,9 @@ interface ScriptEditorProps {
 
 export function ScriptEditor({ jobId, initialScript, onUpdate }: ScriptEditorProps) {
   const { toast } = useToast();
-  const [script, setScript] = useState<GeneratedScript>(() => {
-    try {
-      return JSON.parse(initialScript);
-    } catch {
-      return { title: 'New Script', segments: [], estimatedDuration: 0 };
-    }
-  });
+  const [script, setScript] = useState<GeneratedScript>(
+    () => parseScript(initialScript) ?? { title: 'New Script', segments: [], estimatedDuration: 0 }
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);

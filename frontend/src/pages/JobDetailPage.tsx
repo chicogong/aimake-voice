@@ -21,8 +21,8 @@ import { Slider } from '@/components/ui/slider';
 import { useJobStream } from '@/hooks/useJobStream';
 import { jobsApi } from '@/services/api';
 import { ScriptEditor } from '@/components/ScriptEditor';
-import type { JobDetail, GeneratedScript } from '@/types';
-import { formatDuration } from '@/lib/utils';
+import type { JobDetail } from '@/types';
+import { formatDuration, parseScript } from '@/lib/utils';
 
 const STAGE_LABELS: Record<string, string> = {
   pending: '等待中',
@@ -39,31 +39,27 @@ const STAGE_LABELS: Record<string, string> = {
 function ScriptStreamView({ scriptJson }: { scriptJson: string | null }) {
   if (!scriptJson) return null;
 
-  try {
-    const script = JSON.parse(scriptJson) as GeneratedScript;
-    if (!script.segments || script.segments.length === 0) return null;
+  const script = parseScript(scriptJson);
+  if (!script || !script.segments || script.segments.length === 0) return null;
 
-    return (
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar mt-4 border-t pt-4">
-        <h3 className="text-sm font-semibold sticky top-0 bg-card py-1">实时脚本</h3>
-        <div className="space-y-3">
-          {script.segments.map((seg, i) => (
-            <div
-              key={i}
-              className="flex gap-3 text-sm animate-in fade-in slide-in-from-left-2 duration-500"
-            >
-              <div className="flex-shrink-0 w-12 font-bold text-primary/70 uppercase text-[10px] mt-1">
-                {seg.speaker}
-              </div>
-              <div className="flex-1 text-muted-foreground leading-relaxed">{seg.text}</div>
+  return (
+    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar mt-4 border-t pt-4">
+      <h3 className="text-sm font-semibold sticky top-0 bg-card py-1">实时脚本</h3>
+      <div className="space-y-3">
+        {script.segments.map((seg, i) => (
+          <div
+            key={i}
+            className="flex gap-3 text-sm animate-in fade-in slide-in-from-left-2 duration-500"
+          >
+            <div className="flex-shrink-0 w-12 font-bold text-primary/70 uppercase text-[10px] mt-1">
+              {seg.speaker}
             </div>
-          ))}
-        </div>
+            <div className="flex-1 text-muted-foreground leading-relaxed">{seg.text}</div>
+          </div>
+        ))}
       </div>
-    );
-  } catch {
-    return null;
-  }
+    </div>
+  );
 }
 
 export function JobDetailPage() {
@@ -367,7 +363,10 @@ export function JobDetailPage() {
                       查看脚本
                     </summary>
                     <pre className="mt-2 p-4 bg-muted rounded-lg text-xs overflow-auto max-h-96">
-                      {JSON.stringify(JSON.parse(job.script), null, 2)}
+                      {(() => {
+                        const parsedScript = parseScript(job.script);
+                        return parsedScript ? JSON.stringify(parsedScript, null, 2) : job.script;
+                      })()}
                     </pre>
                   </details>
                 )}

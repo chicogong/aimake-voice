@@ -1,47 +1,12 @@
 /**
- * Tests for Zod validation schemas used in jobs and internal routes.
- * Validates that the security hardening from Sprint 1 works correctly.
+ * Tests for the shared Zod schemas (api/src/schemas.ts).
+ *
+ * These import the *real* schemas used by the route handlers, so the
+ * assertions cannot drift away from production validation.
  */
 
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
-
-// Reproduce the schemas from routes (can't import Hono route modules directly)
-const CreateJobSchema = z.object({
-  source: z.object({
-    type: z.enum(['text', 'url', 'document']),
-    content: z.string().min(1).max(100000),
-    documentId: z.string().optional(),
-  }),
-  contentType: z.enum(['auto', 'podcast', 'audiobook', 'voiceover', 'education', 'tts']),
-  settings: z.object({
-    duration: z.number().int().min(1).max(60),
-    language: z.enum(['zh', 'en']).optional(),
-    style: z.string().max(100).optional(),
-    voices: z
-      .array(z.object({ role: z.string().min(1).max(50), voiceId: z.string().min(1).max(100) }))
-      .min(1),
-  }),
-  title: z.string().max(200).optional(),
-});
-
-const ProgressSchema = z.object({
-  status: z.enum([
-    'pending', 'classifying', 'extracting', 'analyzing',
-    'scripting', 'synthesizing', 'assembling', 'completed', 'failed',
-  ]),
-  progress: z.number().min(0).max(100),
-  currentStage: z.string().min(1).max(50),
-  detectedContentType: z.string().max(50).optional(),
-  errorCode: z.string().max(100).optional(),
-  errorMessage: z.string().max(1000).optional(),
-});
-
-const AudioSchema = z.object({
-  audioBase64: z.string().min(1),
-  duration: z.number().min(0).max(7200),
-  format: z.enum(['mp3', 'wav']),
-});
+import { CreateJobSchema, ProgressSchema, AudioSchema, QuickTtsSchema } from '../schemas';
 
 describe('CreateJobSchema', () => {
   const validJob = {
@@ -58,13 +23,19 @@ describe('CreateJobSchema', () => {
   });
 
   it('accepts auto contentType', () => {
-    const result = CreateJobSchema.safeParse({ ...validJob, contentType: 'auto' });
+    expect(CreateJobSchema.safeParse({ ...validJob, contentType: 'auto' }).success).toBe(true);
+  });
+
+  it('accepts url source type', () => {
+    const result = CreateJobSchema.safeParse({
+      ...validJob,
+      source: { type: 'url', content: 'https://example.com' },
+    });
     expect(result.success).toBe(true);
   });
 
   it('rejects invalid contentType', () => {
-    const result = CreateJobSchema.safeParse({ ...validJob, contentType: 'hacked' });
-    expect(result.success).toBe(false);
+    expect(CreateJobSchema.safeParse({ ...validJob, contentType: 'hacked' }).success).toBe(false);
   });
 
   it('rejects invalid sourceType', () => {
@@ -75,12 +46,18 @@ describe('CreateJobSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty content', () => {
+  it('rejects the removed `document` source type', () => {
     const result = CreateJobSchema.safeParse({
       ...validJob,
-      source: { type: 'text', content: '' },
+      source: { type: 'document', content: 'x' },
     });
     expect(result.success).toBe(false);
+  });
+
+  it('rejects empty content', () => {
+    expect(
+      CreateJobSchema.safeParse({ ...validJob, source: { type: 'text', content: '' } }).success
+    ).toBe(false);
   });
 
   it('rejects content exceeding 100K chars', () => {
@@ -116,16 +93,12 @@ describe('CreateJobSchema', () => {
   });
 
   it('rejects title > 200 chars', () => {
-    const result = CreateJobSchema.safeParse({
-      ...validJob,
-      title: 'x'.repeat(201),
-    });
-    expect(result.success).toBe(false);
+    expect(CreateJobSchema.safeParse({ ...validJob, title: 'x'.repeat(201) }).success).toBe(false);
   });
 });
 
 describe('ProgressSchema', () => {
-  it('accepts valid progress update', () => {
+  it('accepts a valid progress update', () => {
     const result = ProgressSchema.safeParse({
       status: 'scripting',
       progress: 50,
@@ -134,7 +107,7 @@ describe('ProgressSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects invalid status', () => {
+  it('rejects an invalid status', () => {
     const result = ProgressSchema.safeParse({
       status: 'hacked',
       progress: 50,
@@ -163,7 +136,7 @@ describe('ProgressSchema', () => {
 });
 
 describe('AudioSchema', () => {
-  it('accepts valid audio payload', () => {
+  it('accepts a valid audio payload', () => {
     const result = AudioSchema.safeParse({
       audioBase64: 'dGVzdA==',
       duration: 120.5,
@@ -173,38 +146,54 @@ describe('AudioSchema', () => {
   });
 
   it('rejects negative duration', () => {
-    const result = AudioSchema.safeParse({
-      audioBase64: 'dGVzdA==',
-      duration: -5,
-      format: 'mp3',
-    });
-    expect(result.success).toBe(false);
+    expect(
+      AudioSchema.safeParse({ audioBase64: 'dGVzdA==', duration: -5, format: 'mp3' }).success
+    ).toBe(false);
   });
 
   it('rejects duration > 7200', () => {
-    const result = AudioSchema.safeParse({
-      audioBase64: 'dGVzdA==',
-      duration: 7201,
-      format: 'mp3',
-    });
-    expect(result.success).toBe(false);
+    expect(
+      AudioSchema.safeParse({ audioBase64: 'dGVzdA==', duration: 7201, format: 'mp3' }).success
+    ).toBe(false);
   });
 
-  it('rejects invalid format', () => {
-    const result = AudioSchema.safeParse({
-      audioBase64: 'dGVzdA==',
-      duration: 10,
-      format: 'flac',
-    });
-    expect(result.success).toBe(false);
+  it('rejects an invalid format', () => {
+    expect(
+      AudioSchema.safeParse({ audioBase64: 'dGVzdA==', duration: 10, format: 'flac' }).success
+    ).toBe(false);
   });
 
   it('rejects empty audioBase64', () => {
-    const result = AudioSchema.safeParse({
-      audioBase64: '',
-      duration: 10,
-      format: 'mp3',
-    });
-    expect(result.success).toBe(false);
+    expect(AudioSchema.safeParse({ audioBase64: '', duration: 10, format: 'mp3' }).success).toBe(
+      false
+    );
+  });
+});
+
+describe('QuickTtsSchema', () => {
+  const valid = { text: 'Hello', voiceId: 'sf-alex' };
+
+  it('accepts a minimal valid request', () => {
+    expect(QuickTtsSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('accepts optional speed and format', () => {
+    expect(QuickTtsSchema.safeParse({ ...valid, speed: 1.5, format: 'wav' }).success).toBe(true);
+  });
+
+  it('rejects empty text', () => {
+    expect(QuickTtsSchema.safeParse({ ...valid, text: '' }).success).toBe(false);
+  });
+
+  it('rejects text over 5000 chars', () => {
+    expect(QuickTtsSchema.safeParse({ ...valid, text: 'x'.repeat(5001) }).success).toBe(false);
+  });
+
+  it('rejects a missing voiceId', () => {
+    expect(QuickTtsSchema.safeParse({ text: 'Hello' }).success).toBe(false);
+  });
+
+  it('rejects an out-of-range speed', () => {
+    expect(QuickTtsSchema.safeParse({ ...valid, speed: 5 }).success).toBe(false);
   });
 });

@@ -10,48 +10,15 @@
 
 import { Hono } from 'hono';
 import { eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
 import type { Env, Variables } from '../types';
 import { createDb } from '../db';
 import { jobs, users, usageLogs } from '../db/schema';
 import { generateId } from '../utils/id';
 import { errors } from '../middleware/error';
+import { ProgressSchema, ScriptSchema, AudioSchema } from '../schemas';
+import { estimateApiCost } from '../utils/pricing';
 
 const internalRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
-
-// ============ Zod Schemas ============
-
-const JobStatusEnum = z.enum([
-  'pending',
-  'classifying',
-  'extracting',
-  'analyzing',
-  'scripting',
-  'synthesizing',
-  'assembling',
-  'completed',
-  'failed',
-]);
-
-const ProgressSchema = z.object({
-  status: JobStatusEnum,
-  progress: z.number().min(0).max(100),
-  currentStage: z.string().min(1).max(50),
-  detectedContentType: z.string().max(50).optional(),
-  errorCode: z.string().max(100).optional(),
-  errorMessage: z.string().max(1000).optional(),
-});
-
-const ScriptSchema = z.object({
-  script: z.string().min(1).max(500000), // 500KB max
-  title: z.string().max(200).optional(),
-});
-
-const AudioSchema = z.object({
-  audioBase64: z.string().min(1),
-  duration: z.number().min(0).max(7200), // max 2 hours
-  format: z.enum(['mp3', 'wav']),
-});
 
 // ============ Secret verification middleware ============
 
@@ -206,6 +173,7 @@ internalRoutes.post('/jobs/:id/audio', async (c) => {
       type: job.contentType as 'tts' | 'podcast' | 'audiobook' | 'voiceover' | 'education',
       charsUsed: job.sourceContent.length,
       durationUsed: body.duration,
+      apiCost: estimateApiCost(body.duration),
       jobId: id,
       provider: 'agent',
       createdAt: now,
