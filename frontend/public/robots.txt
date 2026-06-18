@@ -1,0 +1,11 @@
+# AIMake Robots.txt
+
+User-agent: *
+Allow: /
+
+Sitemap: https://aimake.cc/sitemap.xml
+
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /devdocs.html
