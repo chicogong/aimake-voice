@@ -1,5 +1,5 @@
 {
-  "name": "aimake",
+  "name": "aimake-voice",
   "version": "0.1.0",
   "type": "module",
   "description": "AI语音内容生成平台 - 播客、有声书、配音",
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/chicogong/aimake.git"
+    "url": "https://github.com/chicogong/aimake-voice.git"
   },
   "author": "chicogong",
   "license": "MIT",
