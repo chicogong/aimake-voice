@@ -42,7 +42,11 @@ app.use(
 
       if (origin.startsWith('http://localhost:')) return origin;
 
-      if (origin === 'https://aimake.cc' || origin === 'https://app.aimake.cc') {
+      if (
+        origin === 'https://studio.aimake.cc' ||
+        origin === 'https://aimake.cc' ||
+        origin === 'https://app.aimake.cc'
+      ) {
         return origin;
       }
 

@@ -4,7 +4,7 @@ User-agent: *
 Allow: /
 
 # 优先抓取
-Sitemap: https://aimake.cc/sitemap.xml
+Sitemap: https://studio.aimake.cc/sitemap.xml
 
 # 禁止抓取
 Disallow: /api/

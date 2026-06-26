@@ -3,7 +3,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://aimake.cc/sitemap.xml
+Sitemap: https://app.aimake.cc/sitemap.xml
 
 Disallow: /api/
 Disallow: /admin/

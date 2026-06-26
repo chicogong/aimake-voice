@@ -37,7 +37,7 @@ export const extractContentTool = tool(
       try {
         const response = await fetch(content, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; AIMake/1.0; +https://aimake.cc)',
+            'User-Agent': 'Mozilla/5.0 (compatible; AIMake/1.0; +https://studio.aimake.cc)',
           },
           signal: controller.signal,
         });

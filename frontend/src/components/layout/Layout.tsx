@@ -20,7 +20,7 @@ export function Layout() {
             <p className="text-sm text-muted-foreground">© 2026 AIMake. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <a
-                href="https://aimake.cc"
+                href="https://studio.aimake.cc"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -28,7 +28,7 @@ export function Layout() {
                 官网
               </a>
               <a
-                href="https://aimake.cc/docs"
+                href="https://studio.aimake.cc/docs.html"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
