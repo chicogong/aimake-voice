@@ -5,6 +5,7 @@ dist/
 build/
 *.min.js
 *.min.css
+website/lib/prism.js
 landing/assets/audio/
 .git/
 .claude/
